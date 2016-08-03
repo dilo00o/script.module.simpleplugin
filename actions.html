@@ -1,0 +1,199 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Actions &mdash; SimplePlugin 1.6 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="SimplePlugin 1.6 documentation" href="index.html" />
+    <link rel="next" title="Virtual Fodler Actions" href="_actions/vf.html" />
+    <link rel="prev" title="Minimal Example" href="example.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="actions">
+<h1>Actions<a class="headerlink" href="#actions" title="Permalink to this headline">¶</a></h1>
+<p>In SimplePlugin <strong>actions</strong> are Python callable objects &#8211; functions or methods &#8211; that are called
+when a SimplePlugin-based plugin is invoked in Kodi. &#8220;root&#8221; action is called when a user opens the plugin from Kodi UI,
+e.g. from &#8220;Video Addons&#8221; or &#8220;Music Addons&#8221; section. Child actions are called via a plugin callback URL
+containing &#8220;action&#8221; parameter in its paramstring, e.g. <code class="file docutils literal"><span class="pre">plugin://plugin.video.foo/?action=bar</span></code>
+URL will call the action mapped to &#8220;bar&#8221; action string.</p>
+<p>Actions are mapped to action strings via <code class="docutils literal"><span class="pre">actions</span></code> property of a Plugin class instance, e.g.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">simpleplugin</span> <span class="k">import</span> <span class="n">Plugin</span>
+
+<span class="n">plugin</span> <span class="o">=</span> <span class="n">Plugin</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">root</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="c1"># Do some things</span>
+    <span class="o">...</span>
+    <span class="k">return</span> <span class="n">listing</span>
+
+
+<span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="c1"># Do some other things</span>
+    <span class="o">...</span>
+    <span class="k">return</span> <span class="n">listing</span>
+
+
+<span class="n">plugin</span><span class="o">.</span><span class="n">actions</span><span class="p">[</span><span class="s1">&#39;root&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">root</span>  <span class="c1"># Mandatory!</span>
+<span class="n">plugin</span><span class="o">.</span><span class="n">actions</span><span class="p">[</span><span class="s1">&#39;foo&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">foo</span>
+<span class="n">plugin</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The &#8220;root&#8221; action is mandatory, i.e. a SimplePlugin based plugin <strong>must</strong> have at least a &#8220;root&#8221; action.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">For mapping you need to use function objects without brackets <code class="docutils literal"><span class="pre">()</span></code>!</p>
+</div>
+<p><code class="docutils literal"><span class="pre">plugin.actions['foo']</span> <span class="pre">=</span> <span class="pre">foo</span></code> &#8211; Correct :-)</p>
+<p><code class="docutils literal"><span class="pre">plugin.actions['foo']</span> <span class="pre">=</span> <span class="pre">foo()</span></code> &#8211; <strong>Wrong!!!</strong> :-(</p>
+<p>An action callable automatically receives <code class="docutils literal"><span class="pre">params</span></code> parameter which is a Python <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a>
+containing a parsed plugin callback URL paramstring, e.g. for URL
+<code class="file docutils literal"><span class="pre">plugin://plugin.video.foo/?action=bar&amp;param=baz</span></code> <code class="docutils literal"><span class="pre">params</span></code> parameter will be
+<code class="docutils literal"><span class="pre">{'action':</span> <span class="pre">'bar',</span> <span class="pre">'param':</span> <span class="pre">'baz'}</span></code>. For &#8220;root&#8221; action <code class="docutils literal"><span class="pre">params</span></code> will be an empty <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> <code class="docutils literal"><span class="pre">{}</span></code>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">An action always receives <code class="docutils literal"><span class="pre">params</span></code> parameter even it does not use it.
+If <code class="docutils literal"><span class="pre">params</span></code> is missing from an action signature, a plugin will raise an exception.</p>
+</div>
+<p>Kodi supports 3 types of actions:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_actions/vf.html">Virtual Fodler Actions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_actions/playback.html">Playback Actions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_actions/misc.html">Misc. Actions</a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">SimplePlugin</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=romanvm&repo=script.module.simpleplugin&type=star&v=2&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+    
+
+<p>
+<a href="https://travis-ci.org/romanvm/script.module.simpleplugin">
+    <img
+        alt="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+        src="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+    />
+</a>
+</p>
+
+
+
+
+    
+
+<p>
+<a href="https://codecov.io/github/romanvm/script.module.simpleplugin">
+    <img
+    alt="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    src="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    />
+</a>
+</p>
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="example.html">Minimal Example</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Actions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="_actions/vf.html">Virtual Fodler Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_actions/playback.html">Playback Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="_actions/misc.html">Misc. Actions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="get_url.html">get_url Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">Persistent Storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cached.html">Cached Decorator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="settings.html">Working with Plugin Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gettext.html">Plugin Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using.html">Using SimplePlugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="links.html">Useful Links</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Roman Miroshnychenko.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/actions.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/romanvm/script.module.simpleplugin" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

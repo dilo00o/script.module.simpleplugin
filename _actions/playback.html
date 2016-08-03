@@ -1,0 +1,166 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Playback Actions &mdash; SimplePlugin 1.6 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="SimplePlugin 1.6 documentation" href="../index.html" />
+    <link rel="up" title="Actions" href="../actions.html" />
+    <link rel="next" title="Misc. Actions" href="misc.html" />
+    <link rel="prev" title="Virtual Fodler Actions" href="vf.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="playback-actions">
+<h1>Playback Actions<a class="headerlink" href="#playback-actions" title="Permalink to this headline">¶</a></h1>
+<p>A playback action must resolve a playable URL (a path to a media file),
+i.e. obtain this URL one way or another and return the URL as a <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#str" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a> or <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#unicode" title="(in Python v2.7)"><code class="xref py py-obj docutils literal"><span class="pre">unicode</span></code></a> object to Kodi.
+E.g.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">play_action</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="s1">&#39;/path/foo/bar.mp4&#39;</span>
+    <span class="k">return</span> <span class="n">path</span>
+</pre></div>
+</div>
+<p>In the upper-level virtual folder the respective item must have its <strong>is_playable</strong> property set to <code class="docutils literal"><span class="pre">True</span></code>.</p>
+<p>Alternatively, <a class="reference internal" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.resolve_url" title="simpleplugin.Plugin.resolve_url"><code class="xref py py-meth docutils literal"><span class="pre">resolve_url</span></code></a> static method can be used to return
+a context dictionary with an additional <code class="docutils literal"><span class="pre">succeeded</span></code> <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#bool" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">bool</span></code></a> parameter indicating
+whether the URL is resolved succesfully, e.g.:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">play_action</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">get_path</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>  <span class="c1"># Some external function to get a playable path</span>
+    <span class="k">return</span> <span class="n">Plugin</span><span class="o">.</span><span class="n">resolve_url</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">succeeded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SimplePlugin</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=romanvm&repo=script.module.simpleplugin&type=star&v=2&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+    
+
+<p>
+<a href="https://travis-ci.org/romanvm/script.module.simpleplugin">
+    <img
+        alt="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+        src="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+    />
+</a>
+</p>
+
+
+
+
+    
+
+<p>
+<a href="https://codecov.io/github/romanvm/script.module.simpleplugin">
+    <img
+    alt="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    src="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    />
+</a>
+</p>
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../example.html">Minimal Example</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../actions.html">Actions</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="vf.html">Virtual Fodler Actions</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Playback Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="misc.html">Misc. Actions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../get_url.html">get_url Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../storage.html">Persistent Storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cached.html">Cached Decorator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../settings.html">Working with Plugin Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gettext.html">Plugin Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../using.html">Using SimplePlugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../links.html">Useful Links</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Roman Miroshnychenko.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/_actions/playback.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/romanvm/script.module.simpleplugin" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

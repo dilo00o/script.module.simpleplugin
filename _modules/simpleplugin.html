@@ -1,0 +1,930 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>simpleplugin &mdash; SimplePlugin 1.6 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="SimplePlugin 1.6 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for simpleplugin</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># Created on: 03.06.2015</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SimplePlugin micro-framework for Kodi content plugins</span>
+
+<span class="sd">**Author**: Roman Miroshnychenko aka Roman V.M.</span>
+
+<span class="sd">**License**: `GPL v.3 &lt;https://www.gnu.org/copyleft/gpl.html&gt;`_</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pickle</span>
+<span class="kn">from</span> <span class="nn">urlparse</span> <span class="k">import</span> <span class="n">parse_qs</span>
+<span class="kn">from</span> <span class="nn">urllib</span> <span class="k">import</span> <span class="n">urlencode</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">MutableMapping</span><span class="p">,</span> <span class="n">namedtuple</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">types</span> <span class="k">import</span> <span class="n">GeneratorType</span>
+<span class="kn">from</span> <span class="nn">hashlib</span> <span class="k">import</span> <span class="n">md5</span>
+<span class="kn">import</span> <span class="nn">xbmcaddon</span>
+<span class="kn">import</span> <span class="nn">xbmc</span>
+<span class="kn">import</span> <span class="nn">xbmcplugin</span>
+<span class="kn">import</span> <span class="nn">xbmcgui</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;SimplePluginError&#39;</span><span class="p">,</span> <span class="s1">&#39;Storage&#39;</span><span class="p">,</span> <span class="s1">&#39;Addon&#39;</span><span class="p">,</span> <span class="s1">&#39;Plugin&#39;</span><span class="p">]</span>
+
+<span class="n">ListContext</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ListContext&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;listing&#39;</span><span class="p">,</span> <span class="s1">&#39;succeeded&#39;</span><span class="p">,</span> <span class="s1">&#39;update_listing&#39;</span><span class="p">,</span> <span class="s1">&#39;cache_to_disk&#39;</span><span class="p">,</span>
+                                         <span class="s1">&#39;sort_methods&#39;</span><span class="p">,</span> <span class="s1">&#39;view_mode&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">])</span>
+<span class="n">PlayContext</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;PlayContext&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="s1">&#39;play_item&#39;</span><span class="p">,</span> <span class="s1">&#39;succeeded&#39;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="SimplePluginError"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.SimplePluginError">[docs]</a><span class="k">class</span> <span class="nc">SimplePluginError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Custom exception&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="Storage"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Storage">[docs]</a><span class="k">class</span> <span class="nc">Storage</span><span class="p">(</span><span class="n">MutableMapping</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Persistent storage for arbitrary data with a dictionary-like interface</span>
+
+<span class="sd">    It is designed as a context manager and better be used</span>
+<span class="sd">    with &#39;with&#39; statement.</span>
+
+<span class="sd">    :param storage_dir: directory for storage</span>
+<span class="sd">    :type storage_dir: str</span>
+<span class="sd">    :param filename: the name of a storage file (optional)</span>
+<span class="sd">    :type filename: str</span>
+
+<span class="sd">    Usage::</span>
+
+<span class="sd">        with Storage(&#39;/foo/bar/storage/&#39;) as storage:</span>
+<span class="sd">            storage[&#39;key1&#39;] = value1</span>
+<span class="sd">            value2 = storage[&#39;key2&#39;]</span>
+
+<span class="sd">    .. note:: After exiting :keyword:`with` block a :class:`Storage` instance is invalidated.</span>
+<span class="sd">        Storage contents are saved to disk only for a new storage or if the contents have been changed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage_dir</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;storage.pcl&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Class constructor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">storage_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fo</span><span class="p">:</span>
+                <span class="n">contents</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="n">md5</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IOError</span><span class="p">,</span> <span class="n">pickle</span><span class="o">.</span><span class="n">PickleError</span><span class="p">,</span> <span class="ne">EOFError</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="o">.</span><span class="n">__iter__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;Storage</span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;simpleplugin.Storage object </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Storage.flush"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Storage.flush">[docs]</a>    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save storage contents to disk</span>
+
+<span class="sd">        This method saves new and changed :class:`Storage` contents to disk</span>
+<span class="sd">        and invalidates the Storage instance. Unchanged Storage is not saved</span>
+<span class="sd">        but simply invalidated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">md5</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fo</span><span class="p">:</span>
+                <span class="n">fo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span></div>
+
+<div class="viewcode-block" id="Storage.copy"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Storage.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a copy of storage contents</span>
+
+<span class="sd">        .. note:: this method performs a *deep* copy operation.</span>
+
+<span class="sd">        :return: a copy of storage contents</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_storage</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="Addon"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon">[docs]</a><span class="k">class</span> <span class="nc">Addon</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base addon class</span>
+
+<span class="sd">    Provides access to basic addon parameters</span>
+
+<span class="sd">    :param id_: addon id, e.g. &#39;plugin.video.foo&#39; (optional)</span>
+<span class="sd">    :type id_: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Class constructor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span> <span class="o">=</span> <span class="n">xbmcaddon</span><span class="o">.</span><span class="n">Addon</span><span class="p">(</span><span class="n">id_</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_configdir</span> <span class="o">=</span> <span class="n">xbmc</span><span class="o">.</span><span class="n">translatePath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_addon</span><span class="o">.</span><span class="n">getAddonInfo</span><span class="p">(</span><span class="s1">&#39;profile&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ui_strings_map</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_configdir</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_configdir</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get addon setting as an Addon instance attribute</span>
+
+<span class="sd">        E.g. addon.my_setting is equal to addon.get_setting(&#39;my_setting&#39;)</span>
+
+<span class="sd">        :param item:</span>
+<span class="sd">        :type item: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">addon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Kodi Addon instance that represents this Addon</span>
+
+<span class="sd">        :return: Addon instance</span>
+<span class="sd">        :rtype: xbmcaddon.Addon</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Addon ID</span>
+
+<span class="sd">        :return: Addon ID, e.g. &#39;plugin.video.foo&#39;</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span><span class="o">.</span><span class="n">getAddonInfo</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Addon path</span>
+
+<span class="sd">        :return: path to the addon folder</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span><span class="o">.</span><span class="n">getAddonInfo</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">icon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Addon icon</span>
+
+<span class="sd">        :return: path to the addon icon image</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">icon</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;icon.png&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">icon</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">icon</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">fanart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Addon fanart</span>
+
+<span class="sd">        :return: path to the addon fanart image</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fanart</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;fanart.jpg&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fanart</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">fanart</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">config_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Addon config dir</span>
+
+<span class="sd">        :return: path to the addon config dir</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configdir</span>
+
+<div class="viewcode-block" id="Addon.get_localized_string"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.get_localized_string">[docs]</a>    <span class="k">def</span> <span class="nf">get_localized_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get localized UI string</span>
+
+<span class="sd">        :param id_: UI string ID</span>
+<span class="sd">        :type id_: int</span>
+<span class="sd">        :return: UI string in the current language</span>
+<span class="sd">        :rtype: unicode</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span><span class="o">.</span><span class="n">getLocalizedString</span><span class="p">(</span><span class="n">id_</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Addon.get_setting"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.get_setting">[docs]</a>    <span class="k">def</span> <span class="nf">get_setting</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">convert</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get addon setting</span>
+
+<span class="sd">        If ``convert=True``, &#39;bool&#39; settings are converted to Python :class:`bool` values,</span>
+<span class="sd">        and numeric strings to Python :class:`long` or :class:`float` depending on their format.</span>
+
+<span class="sd">        .. note:: Settings can also be read via :class:`Addon` instance poperties named as the respective settings.</span>
+<span class="sd">            I.e. ``addon.foo`` is equal to ``addon.get_setting(&#39;foo&#39;)``.</span>
+
+<span class="sd">        :param id_: setting ID</span>
+<span class="sd">        :type id_: str</span>
+<span class="sd">        :param convert: try to guess and convert the setting to an appropriate type</span>
+<span class="sd">            E.g. ``&#39;1.0&#39;`` will be converted to float ``1.0`` number, ``&#39;true&#39;`` to ``True`` and so on.</span>
+<span class="sd">        :type convert: bool</span>
+<span class="sd">        :return: setting value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">setting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span><span class="o">.</span><span class="n">getSetting</span><span class="p">(</span><span class="n">id_</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">convert</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">setting</span> <span class="o">==</span> <span class="s1">&#39;true&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Convert boolean strings to bool</span>
+            <span class="k">elif</span> <span class="n">setting</span> <span class="o">==</span> <span class="s1">&#39;false&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">r&#39;^\-?\d+$&#39;</span><span class="p">,</span> <span class="n">setting</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">long</span><span class="p">(</span><span class="n">setting</span><span class="p">)</span>  <span class="c1"># Convert numeric strings to long</span>
+            <span class="k">elif</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">r&#39;^\-?\d+\.\d+$&#39;</span><span class="p">,</span> <span class="n">setting</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">setting</span><span class="p">)</span>  <span class="c1"># Convert numeric strings with a dot to float</span>
+        <span class="k">return</span> <span class="n">setting</span></div>
+
+<div class="viewcode-block" id="Addon.set_setting"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.set_setting">[docs]</a>    <span class="k">def</span> <span class="nf">set_setting</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set addon setting</span>
+
+<span class="sd">        Python :class:`bool` type are converted to ``&#39;true&#39;`` or ``&#39;false&#39;``</span>
+<span class="sd">        Non-string/non-unicode values are converted to strings.</span>
+
+<span class="sd">        .. warning:: Setting values via :class:`Addon` instance properties is not supported!</span>
+<span class="sd">            Values can only be set using :meth:`Addon.set_setting` method.</span>
+
+<span class="sd">        :param id_: setting ID</span>
+<span class="sd">        :type id_: str</span>
+<span class="sd">        :param value: setting value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="s1">&#39;true&#39;</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="s1">&#39;false&#39;</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_addon</span><span class="o">.</span><span class="n">setSetting</span><span class="p">(</span><span class="n">id_</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Addon.log"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.log">[docs]</a>    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add message to Kodi log starting with Addon ID</span>
+
+<span class="sd">        :param message: message to be written into the Kodi log</span>
+<span class="sd">        :type message: str</span>
+<span class="sd">        :param level: log level. :mod:`xbmc` module provides the necessary symbolic constants.</span>
+<span class="sd">            Default: ``xbmc.LOGDEBUG``</span>
+<span class="sd">        :type level: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">formatted_msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">: </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">UnicodeError</span><span class="p">:</span>
+            <span class="n">formatted_msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">: </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">message</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+        <span class="n">xbmc</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">formatted_msg</span><span class="p">,</span> <span class="n">level</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Addon.get_storage"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.get_storage">[docs]</a>    <span class="k">def</span> <span class="nf">get_storage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;storage.pcl&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a persistent :class:`Storage` instance for storing arbitrary values between addon calls.</span>
+
+<span class="sd">        A :class:`Storage` instance can be used as a context manager.</span>
+
+<span class="sd">        Example::</span>
+
+<span class="sd">            with plugin.get_storage() as storage:</span>
+<span class="sd">                storage[&#39;param1&#39;] = value1</span>
+<span class="sd">                value2 = storage[&#39;param2&#39;]</span>
+
+<span class="sd">        .. note:: After exiting :keyword:`with` block a :class:`Storage` instance is invalidated.</span>
+
+<span class="sd">        :param filename: the name of a storage file (optional)</span>
+<span class="sd">        :type filename: str</span>
+<span class="sd">        :return: Storage object</span>
+<span class="sd">        :rtype: Storage</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Storage</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Addon.cached"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.cached">[docs]</a>    <span class="k">def</span> <span class="nf">cached</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cached decorator</span>
+
+<span class="sd">        Used to cache function return data</span>
+
+<span class="sd">        Usage::</span>
+
+<span class="sd">            @plugin.cached(30)</span>
+<span class="sd">            def my_func(*args, **kwargs):</span>
+<span class="sd">                # Do some stuff</span>
+<span class="sd">                return value</span>
+
+<span class="sd">        :param duration: cache time in min, negative value -- cache indefinitely</span>
+<span class="sd">        :type duration: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">outer_wrapper</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+            <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+            <span class="k">def</span> <span class="nf">inner_wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_storage</span><span class="p">(</span><span class="s1">&#39;__cache__.pcl&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cache</span><span class="p">:</span>
+                    <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                    <span class="n">key</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">data</span><span class="p">,</span> <span class="n">timestamp</span> <span class="o">=</span> <span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">duration</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">current_time</span> <span class="o">-</span> <span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">duration</span><span class="p">):</span>
+                            <span class="k">raise</span> <span class="ne">KeyError</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Cache hit: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Cache miss: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+                        <span class="n">data</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                        <span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_time</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">data</span>
+            <span class="k">return</span> <span class="n">inner_wrapper</span>
+        <span class="k">return</span> <span class="n">outer_wrapper</span></div>
+
+<div class="viewcode-block" id="Addon.gettext"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.gettext">[docs]</a>    <span class="k">def</span> <span class="nf">gettext</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ui_string</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a translated UI string from addon localization files.</span>
+
+<span class="sd">        This function emulates GNU Gettext for more convenient access</span>
+<span class="sd">        to localized addon UI strings. To reduce typing this method object</span>
+<span class="sd">        can be assigned to a ``_`` (single underscore) variable.</span>
+
+<span class="sd">        For using gettext emulation :meth:`Addon.initialize_gettext` method</span>
+<span class="sd">        needs to be called first. See documentation for that method for more info</span>
+<span class="sd">        about Gettext emulation.</span>
+
+<span class="sd">        :param ui_string: a UI string from English :file:`strings.po`.</span>
+<span class="sd">        :type ui_string: str</span>
+<span class="sd">        :return: a UI string from translated :file:`strings.po`.</span>
+<span class="sd">        :rtype: unicode</span>
+<span class="sd">        :raises: :exc:`SimplePluginError` if :meth:`Addon.initialize_gettext` wasn&#39;t called first</span>
+<span class="sd">            or if a string is not found in English :file:`strings.po`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ui_strings_map</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_localized_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ui_strings_map</span><span class="p">[</span><span class="s1">&#39;strings&#39;</span><span class="p">][</span><span class="n">ui_string</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">SimplePluginError</span><span class="p">(</span><span class="s1">&#39;UI string &quot;</span><span class="si">{0}</span><span class="s1">&quot; is not found in strings.po!&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ui_string</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SimplePluginError</span><span class="p">(</span><span class="s1">&#39;Addon localization is not initialized!&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Addon.initialize_gettext"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Addon.initialize_gettext">[docs]</a>    <span class="k">def</span> <span class="nf">initialize_gettext</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize GNU gettext emulation in addon</span>
+
+<span class="sd">        Kodi localization system for addons is not very convenient</span>
+<span class="sd">        because you need to operate with numeric string codes instead</span>
+<span class="sd">        of UI strings themselves which reduces code readability and</span>
+<span class="sd">        may lead to errors. The :class:`Addon` class provides facilities</span>
+<span class="sd">        for emulating GNU Gettext localization system.</span>
+
+<span class="sd">        This allows to use UI strings from addon&#39;s English :file:`strings.po`</span>
+<span class="sd">        file instead of numeric codes to return localized strings from</span>
+<span class="sd">        respective localized :file:`.po` files.</span>
+
+<span class="sd">        This method returns :meth:`Addon.gettext` method object that</span>
+<span class="sd">        can be assigned to a short alias to reduce typing. Traditionally,</span>
+<span class="sd">        ``_`` (a single underscore) is used for this purpose.</span>
+
+<span class="sd">        Example::</span>
+
+<span class="sd">            addon = simpleplugin.Addon()</span>
+<span class="sd">            _ = addon.initialize_gettext()</span>
+
+<span class="sd">            xbmcgui.Dialog().notification(_(&#39;Warning!&#39;), _(&#39;Something happened&#39;))</span>
+
+<span class="sd">        In the preceding example the notification strings will be replaced</span>
+<span class="sd">        with localized versions if these strings are translated.</span>
+
+<span class="sd">        :return: :meth:`Addon.gettext` method object</span>
+<span class="sd">        :raises: :exc:`SimplePluginError` if the addon&#39;s English :file:`strings.po` file is missing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">strings_po</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;resources&#39;</span><span class="p">,</span> <span class="s1">&#39;language&#39;</span><span class="p">,</span> <span class="s1">&#39;English&#39;</span><span class="p">,</span> <span class="s1">&#39;strings.po&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">strings_po</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">strings_po</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fo</span><span class="p">:</span>
+                <span class="n">raw_strings</span> <span class="o">=</span> <span class="n">fo</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">raw_strings_hash</span> <span class="o">=</span> <span class="n">md5</span><span class="p">(</span><span class="n">raw_strings</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+            <span class="n">gettext_pcl</span> <span class="o">=</span> <span class="s1">&#39;__gettext__.pcl&#39;</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_storage</span><span class="p">(</span><span class="n">gettext_pcl</span><span class="p">)</span> <span class="k">as</span> <span class="n">ui_strings_map</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_configdir</span><span class="p">,</span> <span class="n">gettext_pcl</span><span class="p">))</span> <span class="ow">or</span>
+                        <span class="n">raw_strings_hash</span> <span class="o">!=</span> <span class="n">ui_strings_map</span><span class="p">[</span><span class="s1">&#39;hash&#39;</span><span class="p">]):</span>
+                    <span class="n">ui_strings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_po</span><span class="p">(</span><span class="n">raw_strings</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_ui_strings_map</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;hash&#39;</span><span class="p">:</span> <span class="n">raw_strings_hash</span><span class="p">,</span>
+                        <span class="s1">&#39;strings&#39;</span><span class="p">:</span> <span class="n">ui_strings</span>
+                    <span class="p">}</span>
+                    <span class="n">ui_strings_map</span><span class="p">[</span><span class="s1">&#39;hash&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_strings_hash</span>
+                    <span class="n">ui_strings_map</span><span class="p">[</span><span class="s1">&#39;strings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ui_strings</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_ui_strings_map</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">ui_strings_map</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SimplePluginError</span><span class="p">(</span><span class="s1">&#39;Unable to initialize localization because of missing English strings.po!&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">gettext</span></div>
+
+    <span class="k">def</span> <span class="nf">_parse_po</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strings</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parses ``strings.po`` file into a dict of {&#39;string&#39;: id} items.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ui_strings</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">string_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">string</span> <span class="ow">in</span> <span class="n">strings</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">string_id</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;msgctxt&#39;</span> <span class="ow">in</span> <span class="n">string</span><span class="p">:</span>
+                <span class="n">string_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">r&#39;&quot;#(\d+)&quot;&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">string_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;msgid&#39;</span> <span class="ow">in</span> <span class="n">string</span><span class="p">:</span>
+                <span class="n">ui_strings</span><span class="p">[</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">r&#39;&quot;(.*?)&quot;&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">U</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="n">string_id</span>
+                <span class="n">string_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">ui_strings</span></div>
+
+
+<div class="viewcode-block" id="Plugin"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin">[docs]</a><span class="k">class</span> <span class="nc">Plugin</span><span class="p">(</span><span class="n">Addon</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plugin class</span>
+
+<span class="sd">    :param id_: plugin&#39;s id, e.g. &#39;plugin.video.foo&#39; (optional)</span>
+<span class="sd">    :type id_: str</span>
+
+<span class="sd">    This class provides a simplified API to create virtual directories of playable items</span>
+<span class="sd">    for Kodi content plugins.</span>
+<span class="sd">    :class:`simpleplugin.Plugin` uses a concept of callable plugin actions (functions or methods)</span>
+<span class="sd">    that are mapped to &#39;action&#39; parameters via actions instance property.</span>
+<span class="sd">    A Plugin instance must have at least one action for its root section</span>
+<span class="sd">    mapped to &#39;root&#39; string.</span>
+
+<span class="sd">    Minimal example::</span>
+
+<span class="sd">        from simpleplugin import Plugin</span>
+
+<span class="sd">        plugin = Plugin()</span>
+
+<span class="sd">        def root_action(params):</span>
+<span class="sd">            return [{&#39;label&#39;: &#39;Foo&#39;,</span>
+<span class="sd">                    &#39;url&#39;: plugin.get_url(action=&#39;some_action&#39;, param=&#39;Foo&#39;)},</span>
+<span class="sd">                    {&#39;label&#39;: &#39;Bar&#39;,</span>
+<span class="sd">                    &#39;url&#39;: plugin.get_url(action=&#39;some_action&#39;, param=&#39;Bar&#39;)}]</span>
+
+<span class="sd">        def some_action(params):</span>
+<span class="sd">            return [{&#39;label&#39;: params[&#39;param&#39;]}]</span>
+
+<span class="sd">        plugin.actions[&#39;root&#39;] = root_action  # Mandatory item!</span>
+<span class="sd">        plugin.actions[&#39;some_action&#39;] = some_action</span>
+<span class="sd">        plugin.run()</span>
+
+<span class="sd">    .. warning:: You need to map function or method objects without round brackets!</span>
+
+<span class="sd">    E.g.::</span>
+
+<span class="sd">        plugin.actions[&#39;some_action&#39;] = some_action  # Correct :)</span>
+<span class="sd">        plugin.actions[&#39;some_action&#39;] = some_action()  # Wrong! :(</span>
+
+<span class="sd">    An action callable receives 1 parameter -- params.</span>
+<span class="sd">    params is a dict containing plugin call parameters (including action string)</span>
+<span class="sd">    The action callable can return</span>
+<span class="sd">    either a list/generator of dictionaries representing Kodi virtual directory items</span>
+<span class="sd">    or a resolved playable path (:class:`str` or :obj:`unicode`) for Kodi to play.</span>
+
+<span class="sd">    Example 1::</span>
+
+<span class="sd">        def list_action(params):</span>
+<span class="sd">            listing = get_listing(params)  # Some external function to create listing</span>
+<span class="sd">            return listing</span>
+
+<span class="sd">    The ``listing`` variable is a Python list/generator of dict items.</span>
+<span class="sd">    Example 2::</span>
+
+<span class="sd">        def play_action(params):</span>
+<span class="sd">            path = get_path(params)  # Some external function to get a playable path</span>
+<span class="sd">            return path</span>
+
+<span class="sd">    Each dict item can contain the following properties:</span>
+
+<span class="sd">    - label -- item&#39;s label (default: ``&#39;&#39;``).</span>
+<span class="sd">    - label2 -- item&#39;s label2 (default: ``&#39;&#39;``).</span>
+<span class="sd">    - thumb -- item&#39;s thumbnail (default: ``&#39;&#39;``).</span>
+<span class="sd">    - icon -- item&#39;s icon (default: ``&#39;&#39;``).</span>
+<span class="sd">    - path -- item&#39;s path (default: ``&#39;&#39;``).</span>
+<span class="sd">    - fanart -- item&#39;s fanart (optional).</span>
+<span class="sd">    - art -- a dict containing all item&#39;s graphic (see :meth:`xbmcgui.ListItem.setArt` for more info) -- optional.</span>
+<span class="sd">    - stream_info -- a dictionary of ``{stream_type: {param: value}}`` items</span>
+<span class="sd">      (see :meth:`xbmcgui.ListItem.addStreamInfo`) -- optional.</span>
+<span class="sd">    - info --  a dictionary of ``{media: {param: value}}`` items</span>
+<span class="sd">      (see :meth:`xbmcgui.ListItem.setInfo`) -- optional</span>
+<span class="sd">    - context_menu - a list that contains 2-item tuples ``(&#39;Menu label&#39;, &#39;Action&#39;)``.</span>
+<span class="sd">      The items from the tuples are added to the item&#39;s context menu.</span>
+<span class="sd">    - url -- a callback URL for this list item.</span>
+<span class="sd">    - is_playable -- if ``True``, then this item is playable and must return a playable path or</span>
+<span class="sd">     be resolved via :meth:`Plugin.resolve_url` (default: ``False``).</span>
+<span class="sd">    - is_folder -- if ``True`` then the item will open a lower-level sub-listing. if ``False``,</span>
+<span class="sd">      the item either is a playable media or a general-purpose script</span>
+<span class="sd">      which neither creates a virtual folder nor points to a playable media (default: C{True}).</span>
+<span class="sd">      if ``&#39;is_playable&#39;`` is set to ``True``, then ``&#39;is_folder&#39;`` value automatically assumed to be ``False``.</span>
+<span class="sd">    - subtitles -- the list of paths to subtitle files (optional).</span>
+<span class="sd">    - mime -- item&#39;s mime type (optional).</span>
+<span class="sd">    - list_item -- an &#39;class:`xbmcgui.ListItem` instance (optional).</span>
+<span class="sd">      It is used when you want to set all list item properties by yourself.</span>
+<span class="sd">      If ``&#39;list_item&#39;`` property is present, all other properties,</span>
+<span class="sd">      except for ``&#39;url&#39;`` and ``&#39;is_folder&#39;``, are ignored.</span>
+<span class="sd">    - properties -- a dictionary of list item properties</span>
+<span class="sd">      (see :meth:`xbmcgui.ListItem.setProperty`) -- optional.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        listing = [{    &#39;label&#39;: &#39;Label&#39;,</span>
+<span class="sd">                        &#39;label2&#39;: &#39;Label 2&#39;,</span>
+<span class="sd">                        &#39;thumb&#39;: &#39;thumb.png&#39;,</span>
+<span class="sd">                        &#39;icon&#39;: &#39;icon.png&#39;,</span>
+<span class="sd">                        &#39;fanart&#39;: &#39;fanart.jpg&#39;,</span>
+<span class="sd">                        &#39;art&#39;: {&#39;clearart&#39;: &#39;clearart.png&#39;},</span>
+<span class="sd">                        &#39;stream_info&#39;: {&#39;video&#39;: {&#39;codec&#39;: &#39;h264&#39;, &#39;duration&#39;: 1200},</span>
+<span class="sd">                                        &#39;audio&#39;: {&#39;codec&#39;: &#39;ac3&#39;, &#39;language&#39;: &#39;en&#39;}},</span>
+<span class="sd">                        &#39;info&#39;: {&#39;video&#39;: {&#39;genre&#39;: &#39;Comedy&#39;, &#39;year&#39;: 2005}},</span>
+<span class="sd">                        &#39;context_menu&#39;: [(&#39;Menu Item&#39;, &#39;Action&#39;)],</span>
+<span class="sd">                        &#39;url&#39;: &#39;plugin:/plugin.video.test/?action=play&#39;,</span>
+<span class="sd">                        &#39;is_playable&#39;: True,</span>
+<span class="sd">                        &#39;is_folder&#39;: False,</span>
+<span class="sd">                        &#39;subtitles&#39;: [&#39;/path/to/subtitles.en.srt&#39;, &#39;/path/to/subtitles.uk.srt&#39;],</span>
+<span class="sd">                        &#39;mime&#39;: &#39;video/mp4&#39;</span>
+<span class="sd">                        }]</span>
+
+<span class="sd">    Alternatively, an action callable can use :meth:`Plugin.create_listing` and :meth:`Plugin.resolve_url`</span>
+<span class="sd">    static methods to pass additional parameters to Kodi.</span>
+
+<span class="sd">    Example 3::</span>
+
+<span class="sd">        def list_action(params):</span>
+<span class="sd">            listing = get_listing(params)  # Some external function to create listing</span>
+<span class="sd">            return Plugin.create_listing(listing, sort_methods=(2, 10, 17), view_mode=500)</span>
+
+<span class="sd">    Example 4::</span>
+
+<span class="sd">        def play_action(params):</span>
+<span class="sd">            path = get_path(params)  # Some external function to get a playable path</span>
+<span class="sd">            return Plugin.resolve_url(path, succeeded=True)</span>
+
+<span class="sd">    If an action callable performs any actions other than creating a listing or</span>
+<span class="sd">    resolving a playable URL, it must return ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Class constructor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Plugin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">id_</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_url</span> <span class="o">=</span> <span class="s1">&#39;plugin://</span><span class="si">{0}</span><span class="s1">/&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Plugin.get_params"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.get_params">[docs]</a>    <span class="k">def</span> <span class="nf">get_params</span><span class="p">(</span><span class="n">paramstring</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a URL-encoded paramstring to a Python dict</span>
+
+<span class="sd">        :param paramstring: URL-encoded paramstring</span>
+<span class="sd">        :type paramstring: str</span>
+<span class="sd">        :return: parsed paramstring</span>
+<span class="sd">        :rtype: dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">parse_qs</span><span class="p">(</span><span class="n">paramstring</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="n">params</span></div>
+
+<div class="viewcode-block" id="Plugin.get_url"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.get_url">[docs]</a>    <span class="k">def</span> <span class="nf">get_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plugin_url</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a callable URL for a virtual directory item</span>
+
+<span class="sd">        If plugin_url is empty, a current plugin URL is used.</span>
+<span class="sd">        kwargs are converted to a URL-encoded string of plugin call parameters</span>
+<span class="sd">        To call a plugin action, &#39;action&#39; parameter must be used,</span>
+<span class="sd">        if &#39;action&#39; parameter is missing, then the plugin root action is called</span>
+<span class="sd">        If the action is not added to :class:`Plugin` actions, :class:`PluginError` will be raised.</span>
+
+<span class="sd">        :param plugin_url: plugin URL with trailing / (optional)</span>
+<span class="sd">        :type plugin_url: str</span>
+<span class="sd">        :param kwargs: pairs of key=value items</span>
+<span class="sd">        :return: a full plugin callback URL</span>
+<span class="sd">        :rtype: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">plugin_url</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_url</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">?</span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">urlencode</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">doseq</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">url</span></div>
+
+<div class="viewcode-block" id="Plugin.run"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run plugin</span>
+
+<span class="sd">        :param category: str - plugin sub-category, e.g. &#39;Comedy&#39;.</span>
+<span class="sd">            See :func:`xbmcplugin.setPluginCategory` for more info.</span>
+<span class="sd">        :type category: str</span>
+<span class="sd">        :raises: SimplePluginError if unknown action string is provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">category</span><span class="p">:</span>
+            <span class="n">xbmcplugin</span><span class="o">.</span><span class="n">setPluginCategory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">category</span><span class="p">)</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">1</span><span class="p">:])</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;action&#39;</span><span class="p">,</span> <span class="s1">&#39;root&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Actions: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">keys</span><span class="p">())))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Called action &quot;</span><span class="si">{0}</span><span class="s1">&quot; with params &quot;</span><span class="si">{1}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">params</span><span class="p">)))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">action_callable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="p">[</span><span class="n">action</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SimplePluginError</span><span class="p">(</span><span class="s1">&#39;Invalid action: &quot;</span><span class="si">{0}</span><span class="s1">&quot;!&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">action_callable</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Action return value: </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">)),</span> <span class="n">xbmc</span><span class="o">.</span><span class="n">LOGDEBUG</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">GeneratorType</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_add_directory_items</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">create_listing</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_resolved_url</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolve_url</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s1">&#39;listing&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_add_directory_items</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s1">&#39;path&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_resolved_url</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;The action &quot;</span><span class="si">{0}</span><span class="s1">&quot; has not returned any valid data to process.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">action</span><span class="p">),</span> <span class="n">xbmc</span><span class="o">.</span><span class="n">LOGWARNING</span><span class="p">)</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Plugin.create_listing"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.create_listing">[docs]</a>    <span class="k">def</span> <span class="nf">create_listing</span><span class="p">(</span><span class="n">listing</span><span class="p">,</span> <span class="n">succeeded</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">update_listing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cache_to_disk</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_methods</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">view_mode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create and return a context dict for a virtual folder listing</span>
+
+<span class="sd">        :param listing: the list of the plugin virtual folder items</span>
+<span class="sd">        :type listing: :class:`list` or :class:`types.GeneratorType`</span>
+<span class="sd">        :param succeeded: if ``False`` Kodi won&#39;t open a new listing and stays on the current level.</span>
+<span class="sd">        :type succeeded: bool</span>
+<span class="sd">        :param update_listing: if ``True``, Kodi won&#39;t open a sub-listing but refresh the current one.</span>
+<span class="sd">        :type update_listing: bool</span>
+<span class="sd">        :param cache_to_disk: cache this view to disk.</span>
+<span class="sd">        :type cache_to_disk: bool</span>
+<span class="sd">        :param sort_methods: the list of integer constants representing virtual folder sort methods.</span>
+<span class="sd">        :type sort_methods: tuple</span>
+<span class="sd">        :param view_mode: a numeric code for a skin view mode.</span>
+<span class="sd">            View mode codes are different in different skins except for ``50`` (basic listing).</span>
+<span class="sd">        :type view_mode: int</span>
+<span class="sd">        :param content: string - current plugin content, e.g. &#39;movies&#39; or &#39;episodes&#39;.</span>
+<span class="sd">            See :func:`xbmcplugin.setContent` for more info.</span>
+<span class="sd">        :type content: str</span>
+<span class="sd">        :return: context object containing necessary parameters</span>
+<span class="sd">            to create virtual folder listing in Kodi UI.</span>
+<span class="sd">        :rtype: ListContext</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ListContext</span><span class="p">(</span><span class="n">listing</span><span class="p">,</span> <span class="n">succeeded</span><span class="p">,</span> <span class="n">update_listing</span><span class="p">,</span> <span class="n">cache_to_disk</span><span class="p">,</span> <span class="n">sort_methods</span><span class="p">,</span> <span class="n">view_mode</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Plugin.resolve_url"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.resolve_url">[docs]</a>    <span class="k">def</span> <span class="nf">resolve_url</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">play_item</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">succeeded</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create and return a context dict to resolve a playable URL</span>
+
+<span class="sd">        :param path: the path to a playable media.</span>
+<span class="sd">        :type path: str or unicode</span>
+<span class="sd">        :param play_item: a dict of item properties as described in the class docstring.</span>
+<span class="sd">            It allows to set additional properties for the item being played, like graphics, metadata etc.</span>
+<span class="sd">            if ``play_item`` parameter is present, then ``path`` value is ignored, and the path must be set via</span>
+<span class="sd">            ``&#39;path&#39;`` property of a ``play_item`` dict.</span>
+<span class="sd">        :type play_item: dict</span>
+<span class="sd">        :param succeeded: if ``False``, Kodi won&#39;t play anything</span>
+<span class="sd">        :type succeeded: bool</span>
+<span class="sd">        :return: context object containing necessary parameters</span>
+<span class="sd">            for Kodi to play the selected media.</span>
+<span class="sd">        :rtype: PlayContext</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">PlayContext</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">play_item</span><span class="p">,</span> <span class="n">succeeded</span><span class="p">)</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Plugin.create_list_item"><a class="viewcode-back" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.create_list_item">[docs]</a>    <span class="k">def</span> <span class="nf">create_list_item</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an :class:`xbmcgui.ListItem` instance from an item dict</span>
+
+<span class="sd">        :param item: a dict of ListItem properties</span>
+<span class="sd">        :type item: dict</span>
+<span class="sd">        :return: ListItem instance</span>
+<span class="sd">        :rtype: xbmcgui.ListItem</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">list_item</span> <span class="o">=</span> <span class="n">xbmcgui</span><span class="o">.</span><span class="n">ListItem</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+                                     <span class="n">label2</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;label2&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">),</span>
+                                     <span class="n">path</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">xbmc</span><span class="o">.</span><span class="n">getInfoLabel</span><span class="p">(</span><span class="s1">&#39;System.BuildVersion&#39;</span><span class="p">)[:</span><span class="mi">2</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="mi">16</span><span class="p">:</span>
+            <span class="n">art</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;art&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">art</span><span class="p">[</span><span class="s1">&#39;thumb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;thumb&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">art</span><span class="p">[</span><span class="s1">&#39;icon&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;icon&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">art</span><span class="p">[</span><span class="s1">&#39;fanart&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fanart&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">item</span><span class="p">[</span><span class="s1">&#39;art&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">art</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">setThumbnailImage</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;thumb&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">setIconImage</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;icon&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">setProperty</span><span class="p">(</span><span class="s1">&#39;fanart_image&#39;</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fanart&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;art&#39;</span><span class="p">):</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">setArt</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;art&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stream_info&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">stream</span><span class="p">,</span> <span class="n">stream_info</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;stream_info&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">list_item</span><span class="o">.</span><span class="n">addStreamInfo</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">stream_info</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;info&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">media</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;info&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">list_item</span><span class="o">.</span><span class="n">setInfo</span><span class="p">(</span><span class="n">media</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;context_menu&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">addContextMenuItems</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;context_menu&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;subtitles&#39;</span><span class="p">):</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">setSubtitles</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;subtitles&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mime&#39;</span><span class="p">):</span>
+            <span class="n">list_item</span><span class="o">.</span><span class="n">setMimeType</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;mime&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;properties&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">list_item</span><span class="o">.</span><span class="n">setProperty</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">list_item</span></div>
+
+    <span class="k">def</span> <span class="nf">_add_directory_items</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a virtual folder listing</span>
+
+<span class="sd">        :param context: context object</span>
+<span class="sd">        :type context: ListContext</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Creating listing from </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="p">)),</span> <span class="n">xbmc</span><span class="o">.</span><span class="n">LOGDEBUG</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">xbmcplugin</span><span class="o">.</span><span class="n">setContent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>  <span class="c1"># This must be at the beginning</span>
+        <span class="n">listing</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">context</span><span class="o">.</span><span class="n">listing</span><span class="p">:</span>
+            <span class="n">is_folder</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_folder&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;list_item&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">list_item</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;list_item&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">list_item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_list_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_playable&#39;</span><span class="p">):</span>
+                    <span class="n">list_item</span><span class="o">.</span><span class="n">setProperty</span><span class="p">(</span><span class="s1">&#39;IsPlayable&#39;</span><span class="p">,</span> <span class="s1">&#39;true&#39;</span><span class="p">)</span>
+                    <span class="n">is_folder</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">listing</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">],</span> <span class="n">list_item</span><span class="p">,</span> <span class="n">is_folder</span><span class="p">))</span>
+        <span class="n">xbmcplugin</span><span class="o">.</span><span class="n">addDirectoryItems</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">listing</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">listing</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">sort_methods</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="p">[</span><span class="n">xbmcplugin</span><span class="o">.</span><span class="n">addSortMethod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span> <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="n">context</span><span class="o">.</span><span class="n">sort_methods</span><span class="p">]</span>
+        <span class="n">xbmcplugin</span><span class="o">.</span><span class="n">endOfDirectory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span>
+                                  <span class="n">context</span><span class="o">.</span><span class="n">succeeded</span><span class="p">,</span>
+                                  <span class="n">context</span><span class="o">.</span><span class="n">update_listing</span><span class="p">,</span>
+                                  <span class="n">context</span><span class="o">.</span><span class="n">cache_to_disk</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">view_mode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">xbmc</span><span class="o">.</span><span class="n">executebuiltin</span><span class="p">(</span><span class="s1">&#39;Container.SetViewMode(</span><span class="si">{0}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">view_mode</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_set_resolved_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resolve a playable URL</span>
+
+<span class="sd">        :param context: context object</span>
+<span class="sd">        :type context: PlayContext</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">&#39;Resolving URL from </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">context</span><span class="p">)),</span> <span class="n">xbmc</span><span class="o">.</span><span class="n">LOGDEBUG</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">play_item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">list_item</span> <span class="o">=</span> <span class="n">xbmcgui</span><span class="o">.</span><span class="n">ListItem</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">list_item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_list_item</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">play_item</span><span class="p">)</span>
+        <span class="n">xbmcplugin</span><span class="o">.</span><span class="n">setResolvedUrl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handle</span><span class="p">,</span> <span class="n">context</span><span class="o">.</span><span class="n">succeeded</span><span class="p">,</span> <span class="n">list_item</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SimplePlugin</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=romanvm&repo=script.module.simpleplugin&type=star&v=2&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+    
+
+<p>
+<a href="https://travis-ci.org/romanvm/script.module.simpleplugin">
+    <img
+        alt="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+        src="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+    />
+</a>
+</p>
+
+
+
+
+    
+
+<p>
+<a href="https://codecov.io/github/romanvm/script.module.simpleplugin">
+    <img
+    alt="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    src="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    />
+</a>
+</p>
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">Minimal Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../actions.html">Actions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_url.html">get_url Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../storage.html">Persistent Storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cached.html">Cached Decorator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../settings.html">Working with Plugin Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gettext.html">Plugin Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../using.html">Using SimplePlugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../links.html">Useful Links</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Roman Miroshnychenko.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+    <a href="https://github.com/romanvm/script.module.simpleplugin" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

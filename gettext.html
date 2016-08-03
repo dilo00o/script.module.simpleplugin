@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Plugin Localization &mdash; SimplePlugin 1.6 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="SimplePlugin 1.6 documentation" href="index.html" />
+    <link rel="next" title="Using SimplePlugin" href="using.html" />
+    <link rel="prev" title="Working with Plugin Settings" href="settings.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="plugin-localization">
+<h1>Plugin Localization<a class="headerlink" href="#plugin-localization" title="Permalink to this headline">¶</a></h1>
+<p>Kodi has its own specific <a class="reference external" href="http://kodi.wiki/view/Language_support">localization system</a> that is also used for addons. This system uses numeric codes for
+extracting respective localized <abbr title="Graphical User Interface">GUI</abbr> strings from addon localization <code class="file docutils literal"><span class="pre">.po</span></code>
+files using <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcaddon.html#xbmcaddon.Addon.getLocalizedString" title="(in Kodistubs v2.0.0)"><code class="xref py py-meth docutils literal"><span class="pre">getLocalizedString</span></code></a> method. For example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">xbmcaddon</span>
+<span class="kn">import</span> <span class="nn">xbmcgui</span>
+
+<span class="n">addon</span> <span class="o">=</span> <span class="n">xbmcaddon</span><span class="o">.</span><span class="n">Addon</span><span class="p">()</span>
+<span class="n">xbmcgui</span><span class="o">.</span><span class="n">Dialog</span><span class="p">()</span><span class="o">.</span><span class="n">ok</span><span class="p">(</span><span class="n">addon</span><span class="o">.</span><span class="n">getLocalizedString</span><span class="p">(</span><span class="mi">32000</span><span class="p">),</span> <span class="n">addon</span><span class="o">.</span><span class="n">getLocalizedString</span><span class="p">(</span><span class="mi">32001</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>As you can see, this is neither intuitive nor convenient and may lead to errors. To improve code readability the
+<strong>SimplePlugin</strong> library can emulate a popular <a class="reference external" href="https://www.gnu.org/software/gettext">GNU Gettext</a> localization system that is also standard for Python
+programs. This emulation layer is implemented through
+<a class="reference internal" href="_autosummary/simpleplugin.html#simpleplugin.Addon.initialize_gettext" title="simpleplugin.Addon.initialize_gettext"><code class="xref py py-class docutils literal"><span class="pre">initialize_gettext()</span></code></a> and
+<a class="reference internal" href="_autosummary/simpleplugin.html#simpleplugin.Addon.gettext" title="simpleplugin.Addon.gettext"><code class="xref py py-class docutils literal"><span class="pre">gettext()</span></code></a> methods that allow to access localized addon GUI strings using
+English source strings instead of numeric codes. For example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">xbmcgui</span>
+<span class="kn">from</span> <span class="nn">simpleplugin</span> <span class="k">import</span> <span class="n">Plugin</span>
+
+<span class="n">plugin</span> <span class="o">=</span> <span class="n">Plugin</span><span class="p">()</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">plugin</span><span class="o">.</span><span class="n">initialize_gettext</span><span class="p">()</span>
+
+<span class="n">xbmcgui</span><span class="o">.</span><span class="n">Dialog</span><span class="p">()</span><span class="o">.</span><span class="n">ok</span><span class="p">(</span><span class="n">_</span><span class="p">(</span><span class="s1">&#39;Hello World!&#39;</span><span class="p">),</span> <span class="n">_</span><span class="p">(</span><span class="s1">&#39;This is sample text.&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="_autosummary/simpleplugin.html#simpleplugin.Addon.initialize_gettext" title="simpleplugin.Addon.initialize_gettext"><code class="xref py py-class docutils literal"><span class="pre">initialize_gettext()</span></code></a> method returns
+<a class="reference internal" href="_autosummary/simpleplugin.html#simpleplugin.Addon.gettext" title="simpleplugin.Addon.gettext"><code class="xref py py-class docutils literal"><span class="pre">gettext</span></code></a> method object that is used to extract localized GUI stirngs.
+The name of this method (or function) object can be any but traditionally it is named with a single underscore <code class="docutils literal"><span class="pre">_</span></code> to
+reduce typing. In the preceding example you can clearly see which strings or their localized versions are used in
+addon/plugin GUI elements and this code is much more readable than in the first example.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">To use the Gettext emulation you need to call
+<a class="reference internal" href="_autosummary/simpleplugin.html#simpleplugin.Addon.initialize_gettext" title="simpleplugin.Addon.initialize_gettext"><code class="xref py py-class docutils literal"><span class="pre">initialize_gettext()</span></code></a> method first.
+All GUI strings obtained using the emulation feature must be present at least in English <code class="file docutils literal"><span class="pre">strings.po</span></code>
+file. Attempting to access a missing string will result in <a class="reference internal" href="_autosummary/simpleplugin.html#simpleplugin.SimplePluginError" title="simpleplugin.SimplePluginError"><code class="xref py py-exc docutils literal"><span class="pre">simpleplugin.SimplePluginError</span></code></a> exception.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">SimplePlugin</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=romanvm&repo=script.module.simpleplugin&type=star&v=2&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+    
+
+<p>
+<a href="https://travis-ci.org/romanvm/script.module.simpleplugin">
+    <img
+        alt="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+        src="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+    />
+</a>
+</p>
+
+
+
+
+    
+
+<p>
+<a href="https://codecov.io/github/romanvm/script.module.simpleplugin">
+    <img
+    alt="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    src="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    />
+</a>
+</p>
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="example.html">Minimal Example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="actions.html">Actions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_url.html">get_url Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="storage.html">Persistent Storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cached.html">Cached Decorator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="settings.html">Working with Plugin Settings</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Plugin Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using.html">Using SimplePlugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="links.html">Useful Links</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Roman Miroshnychenko.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/gettext.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/romanvm/script.module.simpleplugin" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

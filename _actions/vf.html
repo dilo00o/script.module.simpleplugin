@@ -1,0 +1,235 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Virtual Fodler Actions &mdash; SimplePlugin 1.6 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="SimplePlugin 1.6 documentation" href="../index.html" />
+    <link rel="up" title="Actions" href="../actions.html" />
+    <link rel="next" title="Playback Actions" href="playback.html" />
+    <link rel="prev" title="Actions" href="../actions.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="virtual-fodler-actions">
+<h1>Virtual Fodler Actions<a class="headerlink" href="#virtual-fodler-actions" title="Permalink to this headline">¶</a></h1>
+<p>A virtual folder action creates in the Kodi UI a listing of items representing various child actions:
+virtual sub-folders, playable items or misc. tasks. The listing is a Python <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#list" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a> object
+where each item is a Python <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> which defines item&#8217;s properties. Alternatively,
+a virtual folder action can be a generator function yielding virtual folder items instead of a
+plain function returning <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#list" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a>.</p>
+<p>Each virtual folder item is a <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> that can have the following properties:</p>
+<ul class="simple">
+<li><strong>label</strong> &#8211; item&#8217;s label (default: <code class="docutils literal"><span class="pre">''</span></code>).</li>
+<li><strong>label2</strong> &#8211; item&#8217;s label2 (default: <code class="docutils literal"><span class="pre">''</span></code>).</li>
+<li><strong>thumb</strong> &#8211; item&#8217;s thumbnail (default: <code class="docutils literal"><span class="pre">''</span></code>).</li>
+<li><strong>icon</strong> &#8211; item&#8217;s icon (default: <code class="docutils literal"><span class="pre">''</span></code>).</li>
+<li><strong>fanart</strong> &#8211; item&#8217;s fanart (optional).</li>
+<li><strong>art</strong> &#8211; a <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> containing all item&#8217;s graphic (see <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcgui.html#xbmcgui.ListItem.setArt" title="(in Kodistubs v2.0.0)"><code class="xref py py-meth docutils literal"><span class="pre">xbmcgui.ListItem.setArt()</span></code></a> for more info) &#8211;
+optional.</li>
+<li><strong>stream_info</strong> &#8211; a <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> of <code class="docutils literal"><span class="pre">{stream_type:</span> <span class="pre">{param:</span> <span class="pre">value}}</span></code> items
+(see <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcgui.html#xbmcgui.ListItem.addStreamInfo" title="(in Kodistubs v2.0.0)"><code class="xref py py-meth docutils literal"><span class="pre">xbmcgui.ListItem.addStreamInfo()</span></code></a>) &#8211; optional.</li>
+<li><strong>info</strong> &#8211;  a <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> of <code class="docutils literal"><span class="pre">{media:</span> <span class="pre">{param:</span> <span class="pre">value}}</span></code> items
+(see <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcgui.html#xbmcgui.ListItem.setInfo" title="(in Kodistubs v2.0.0)"><code class="xref py py-meth docutils literal"><span class="pre">xbmcgui.ListItem.setInfo()</span></code></a>) &#8211; optional.</li>
+<li><strong>context_menu</strong> &#8211; a <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#list" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a>.
+The <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#list" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a> must contain 2-item tuples <code class="docutils literal"><span class="pre">('Menu</span> <span class="pre">label',</span> <span class="pre">'&lt;Built-in</span> <span class="pre">function&gt;')</span></code> where &#8220;Built-in function&#8221;
+is a <a class="reference external" href="http://kodi.wiki/view/List_of_built-in_functions">Kodi built-in function</a>. The items from the tuples are added to the item&#8217;s context menu.</li>
+<li><strong>url</strong> &#8211; a callback URL for this list item. This is a mandatory item.
+A <strong>url</strong> can be provided directly as a <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#str" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a> or created using
+<a class="reference internal" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.get_url" title="simpleplugin.Plugin.get_url"><code class="xref py py-meth docutils literal"><span class="pre">get_url</span></code></a> method.</li>
+<li><strong>is_playable</strong> &#8211; if <code class="docutils literal"><span class="pre">True</span></code>, then this item is playable and must return a playable path or
+be resolved via <a class="reference internal" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.resolve_url" title="simpleplugin.Plugin.resolve_url"><code class="xref py py-meth docutils literal"><span class="pre">resolve_url</span></code></a> static method (default: <code class="docutils literal"><span class="pre">False</span></code>).</li>
+<li><strong>is_folder</strong> &#8211; if <code class="docutils literal"><span class="pre">True</span></code> then the item will open a lower-level sub-listing. if <code class="docutils literal"><span class="pre">False</span></code>,
+the item either is a playable media or a general-purpose script
+which neither creates a virtual folder nor points to a playable media (default: <code class="docutils literal"><span class="pre">True</span></code>).
+if <strong>is_playable</strong> is set to <code class="docutils literal"><span class="pre">True</span></code>, then <strong>is_folder</strong> value implicitly assumed to be <code class="docutils literal"><span class="pre">False</span></code>.</li>
+<li><strong>subtitles</strong> &#8211; the list of paths to subtitle files (optional).</li>
+<li><strong>mime</strong> &#8211; item&#8217;s mime type (optional).</li>
+<li><strong>list_item</strong> &#8211; an <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcgui.html#xbmcgui.ListItem" title="(in Kodistubs v2.0.0)"><code class="xref py py-class docutils literal"><span class="pre">xbmcgui.ListItem</span></code></a> instance (optional). It is used when you want to set all list item
+properties by yourself. If <strong>list_item</strong> property is present, all other properties,
+except for <strong>url</strong> and <strong>is_folder</strong>, are ignored.</li>
+<li><strong>properties</strong> &#8211; a <a class="reference external" href="https://docs.python.org/2.7/library/stdtypes.html#dict" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">dict</span></code></a> of list item properties (see <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcgui.html#xbmcgui.ListItem.setProperty" title="(in Kodistubs v2.0.0)"><code class="xref py py-meth docutils literal"><span class="pre">xbmcgui.ListItem.setProperty()</span></code></a>) &#8211; optional.</li>
+</ul>
+<p>An example of a listing that contains 1 item:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">listing</span> <span class="o">=</span> <span class="p">[{</span>    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;Label&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;label2&#39;</span><span class="p">:</span> <span class="s1">&#39;Label 2&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;thumb&#39;</span><span class="p">:</span> <span class="s1">&#39;thumb.png&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;icon&#39;</span><span class="p">:</span> <span class="s1">&#39;icon.png&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;fanart&#39;</span><span class="p">:</span> <span class="s1">&#39;fanart.jpg&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;art&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;clearart&#39;</span><span class="p">:</span> <span class="s1">&#39;clearart.png&#39;</span><span class="p">},</span>
+                <span class="s1">&#39;stream_info&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;codec&#39;</span><span class="p">:</span> <span class="s1">&#39;h264&#39;</span><span class="p">,</span> <span class="s1">&#39;duration&#39;</span><span class="p">:</span> <span class="mi">1200</span><span class="p">},</span>
+                                <span class="s1">&#39;audio&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;codec&#39;</span><span class="p">:</span> <span class="s1">&#39;ac3&#39;</span><span class="p">,</span> <span class="s1">&#39;language&#39;</span><span class="p">:</span> <span class="s1">&#39;en&#39;</span><span class="p">}},</span>
+                <span class="s1">&#39;info&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;genre&#39;</span><span class="p">:</span> <span class="s1">&#39;Comedy&#39;</span><span class="p">,</span> <span class="s1">&#39;year&#39;</span><span class="p">:</span> <span class="mi">2005</span><span class="p">}},</span>
+                <span class="s1">&#39;context_menu&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="s1">&#39;Menu Item&#39;</span><span class="p">,</span> <span class="s1">&#39;Action&#39;</span><span class="p">)],</span>
+                <span class="s1">&#39;url&#39;</span><span class="p">:</span> <span class="s1">&#39;plugin:/plugin.video.foo/?action=play&amp;video=bar.mp4&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;is_playable&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s1">&#39;subtitles&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;/path/to/subtitles.en.srt&#39;</span><span class="p">,</span> <span class="s1">&#39;/path/to/subtitles.uk.srt&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;mime&#39;</span><span class="p">:</span> <span class="s1">&#39;video/mp4&#39;</span>
+                <span class="p">}]</span>
+</pre></div>
+</div>
+<p>A virtual folder action must return either the <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#list" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a> described above
+or implement a generator that yields virtual folder items one by one.
+Alternatively the virtual folder action can return a context object created with
+<a class="reference internal" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.create_listing" title="simpleplugin.Plugin.create_listing"><code class="xref py py-meth docutils literal"><span class="pre">create_listing</span></code></a> static method.
+This method can be used to pass additional properties to Kodi.</p>
+<p><a class="reference internal" href="../_autosummary/simpleplugin.html#simpleplugin.Plugin.create_listing" title="simpleplugin.Plugin.create_listing"><code class="xref py py-meth docutils literal"><span class="pre">create_listing</span></code></a> method takes the following parameters:</p>
+<ul class="simple">
+<li><strong>listing</strong>: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#list" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">list</span></code></a> or <code class="xref py py-class docutils literal"><span class="pre">types.GeneratorType</span></code> &#8211; a list or a generator of the plugin
+virtual folder items.</li>
+<li><strong>succeeded</strong>: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#bool" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">bool</span></code></a> &#8211; if <code class="docutils literal"><span class="pre">False</span></code> Kodi won&#8217;t open a new listing and stays on the current level.</li>
+<li><strong>update_listing</strong>: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#bool" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">bool</span></code></a> &#8211; if <code class="docutils literal"><span class="pre">True</span></code>, Kodi won&#8217;t open a sub-listing but refresh the current one.</li>
+<li><strong>cache_to_disk</strong>: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#bool" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">bool</span></code></a> &#8211; if <code class="docutils literal"><span class="pre">False</span></code>, Kodi won&#8217;t cache this listing to disk.</li>
+<li><strong>sort_methods</strong>: &#8211; a <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#tuple" title="(in Python v2.7)"><code class="xref py py-obj docutils literal"><span class="pre">tuple</span></code></a> of integer constants representing virtual folder sort methods.
+See <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcplugin.html#xbmcplugin.addSortMethod" title="(in Kodistubs v2.0.0)"><code class="xref py py-func docutils literal"><span class="pre">xbmcplugin.addSortMethod()</span></code></a> documentation for more info.</li>
+<li><strong>view_mode</strong>: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#int" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">int</span></code></a> &#8211; a numeric code for a skin view mode.
+View mode codes are different in different skins except for <code class="docutils literal"><span class="pre">50</span></code> (basic listing),
+so you need to set a custom view mode depending on the current skin.</li>
+<li><strong>content</strong>: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#str" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">str</span></code></a> &#8211; current plugin content, e.g. &#8216;movies&#8217; or &#8216;episodes&#8217;.
+See <a class="reference external" href="http://romanvm.github.io/Kodistubs/_autosummary/xbmcplugin.html#xbmcplugin.setContent" title="(in Kodistubs v2.0.0)"><code class="xref py py-func docutils literal"><span class="pre">xbmcplugin.setContent()</span></code></a> for more info.</li>
+</ul>
+<p>All parameters, except for <strong>listing</strong>, are optional.</p>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">virtual_folder_action</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="n">listing</span> <span class="o">=</span> <span class="n">get_listing</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>  <span class="c1"># Some external function to create a listing or a generator</span>
+    <span class="k">return</span> <span class="n">Plugin</span><span class="o">.</span><span class="n">create_listing</span><span class="p">(</span><span class="n">listing</span><span class="p">,</span>
+                                 <span class="n">sort_methods</span><span class="o">=</span><span class="p">(</span><span class="n">SORT_METHOD_LABEL_IGNORE_THE</span><span class="p">,</span>
+                                               <span class="n">SORT_METHOD_TITLE_IGNORE_THE</span><span class="p">,</span>
+                                               <span class="n">SORT_METHOD_VIDEO_YEAR</span><span class="p">),</span>
+                                 <span class="n">view_mode</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SimplePlugin</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=romanvm&repo=script.module.simpleplugin&type=star&v=2&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+    
+
+<p>
+<a href="https://travis-ci.org/romanvm/script.module.simpleplugin">
+    <img
+        alt="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+        src="https://secure.travis-ci.org/romanvm/script.module.simpleplugin.svg?branch=master"
+    />
+</a>
+</p>
+
+
+
+
+    
+
+<p>
+<a href="https://codecov.io/github/romanvm/script.module.simpleplugin">
+    <img
+    alt="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    src="https://codecov.io/github/romanvm/script.module.simpleplugin/coverage.svg?branch=master"
+    />
+</a>
+</p>
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../example.html">Minimal Example</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../actions.html">Actions</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Virtual Fodler Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="playback.html">Playback Actions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="misc.html">Misc. Actions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../get_url.html">get_url Method</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../storage.html">Persistent Storage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cached.html">Cached Decorator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../settings.html">Working with Plugin Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gettext.html">Plugin Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../using.html">Using SimplePlugin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../links.html">Useful Links</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Roman Miroshnychenko.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="../_sources/_actions/vf.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/romanvm/script.module.simpleplugin" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
